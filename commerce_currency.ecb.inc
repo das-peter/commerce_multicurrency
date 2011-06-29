@@ -21,12 +21,14 @@ function commerce_currency_exchange_rate_sync_provider_ecb($currency_code, $targ
   $data = cache_get(__FUNCTION__, 'cache');
 
   if (!$data) {
-    $XML = simplexml_load_file('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml');
-    foreach($XML->Cube->Cube->Cube as $rate){
-      $ecb_rates[(string) $rate["currency"]] = (string) $rate["rate"];
+    $ecb_rates = array();
+    if (($XML = @simplexml_load_file('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml')) && !empty($XML->Cube->Cube->Cube)) {
+      foreach($XML->Cube->Cube->Cube as $rate){
+        $ecb_rates[(string) $rate["currency"]] = (string) $rate["rate"];
+      }
+      // Cache six hours.
+      cache_set(__FUNCTION__, $ecb_rates, 'cache', time() + (3600 * 6));
     }
-    // Cache six hours
-    cache_set(__FUNCTION__, $ecb_rates, 'cache', time() + (3600 * 6));
   }
   else {
    $ecb_rates = $data->data;
