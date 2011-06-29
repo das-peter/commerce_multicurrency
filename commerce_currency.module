@@ -12,7 +12,7 @@ function commerce_currency_menu() {
   $items['admin/commerce/config/currency_conversion'] = array(
     'title' => 'Currency conversion settings',
     'description' => 'Set currency conversion rates.',
-    'page callback' => 'drupal_get_form',
+    'page provider' => 'drupal_get_form',
     'page arguments' => array('commerce_currency_conversion_settings_form'),
     'access arguments' => array('configure store'),
     'type' => MENU_NORMAL_ITEM,
@@ -22,18 +22,82 @@ function commerce_currency_menu() {
 }
 
 /**
+ * Implements hook_hook_info().
+ */
+function commerce_currency_hook_info() {
+  $hooks = array(
+    'commerce_currency_exchange_rate_sync_provider_info' => array(
+      'group' => 'commerce_currency',
+    ),
+    'commerce_currency_exchange_rate_sync_provider_info_alter' => array(
+      'group' => 'commerce_currency',
+    ),
+  );
+  return $hooks;
+}
+
+/**
+ * Returns all available currency exchange rate sync providers or as single
+ * provider if a code is give.
+ *
+ * @param $code
+ * @return array
+ */
+function commerce_currency_commerce_currency_exchange_rate_sync_provider($code = NULL) {
+  $providers = module_invoke_all('commerce_currency_exchange_rate_sync_provider_info');
+  drupal_alter('commerce_currency_exchange_rate_sync_provider_info', $providers);
+  if ($code) {
+    if (isset($providers[$code])) {
+      return $providers[$code];
+    }
+    return FALSE;
+  }
+  return $providers;
+}
+
+/**
+ * Implements hook_commerce_currency_exchange_rate_sync_provider_info().
+ */
+function commerce_currency_commerce_currency_exchange_rate_sync_provider_info() {
+  return array (
+    'ecb' => array(
+      'title' => t('European Central Bank'),
+      'callback' => 'commerce_currency_exchange_rate_sync_provider_ecb',
+      'file' => drupal_get_path('module', 'commerce_currency') . '/commerce_currency.ecb.inc',
+    ),
+  );
+}
+
+/**
+ * Implements hook_commerce_currency_info_alter().
+ *
+ * Inject own conversion function.
+ */
+function commerce_currency_commerce_currency_info_alter(&$currencies, $langcode) {
+  foreach ($currencies as $currency_code) {
+    $currencies[$currency_code]['conversion_provider'] = 'commerce_currency_conversion';
+  }
+}
+
+/**
  * Converts a currency amount into another.
- * @param string $currency
- * @param integer $amount
- * @param string $target_currency
+ *
+ * @param $amount
+ * @param $currency_code
+ * @param $target_currency_code
  *
  * @return integer The converted amount or FALSE on failure.
  */
-function commerce_currency_conversion($currency, $amount, $target_currency) {
-  if ($currency == $target_currency) {
+function commerce_currency_conversion($amount, $currency_code, $target_currency_code) {
+  $conversion_settings = &drupal_static(__FUNCTION__, FALSE);
+
+  // Skip - makes no sense to calculate here.
+  if ($currency_code == $target_currency_code) {
     return $amount;
   }
-  if (!($conversion_settings = variable_get('commerce_currency_conversion_settings', FALSE))) {
+
+  // Check if there are conversion settings.
+  if ($conversion_settings == FALSE && !($conversion_settings = variable_get('commerce_currency_conversion_settings', FALSE))) {
     watchdog(
       'commerce_currency', 'No conversion rates found - please configure them!',
       array(),
@@ -42,14 +106,83 @@ function commerce_currency_conversion($currency, $amount, $target_currency) {
     );
     return FALSE;
   }
-  if ($conversion_settings[$currency]['rates'][$target_currency]) {
+
+  // Check if there are conversion settings for the specified currencies.
+  if (empty($conversion_settings[$currency_code]['rates'][$target_currency_code]['rate'])) {
     watchdog(
-    	'commerce_currency', 'No conversion rate from %source_currency to  %target_currency found - please configure it!',
-      array('%source_currency' => $currency, '%target_currency' => $target_currency),
+      'commerce_currency', 'No conversion rate from %source_currency to  %target_currency found - please configure it!',
+      array('%source_currency' => $currency_code, '%target_currency' => $target_currency_code),
       WATCHDOG_ERROR,
       url('admin/commerce/config/currency_conversion')
     );
     return FALSE;
   }
-  return $amount * $conversion_settings[$currency]['rates'][$target_currency];
+
+  return $amount * $conversion_settings[$currency_code]['rates'][$target_currency_code]['rate'];
+}
+
+/**
+ * Implements hook_cron().
+ *
+ * Queues currencies for updates.
+ */
+function commerce_currency_cron() {
+  $currencies = commerce_currencies(TRUE);
+
+  if (!($conversion_settings = variable_get('commerce_currency_conversion_settings', FALSE))) {
+    return;
+  }
+
+  $queue = DrupalQueue::get('commerce_currency_sync_exchange_rates');
+  foreach ($currencies as $currency_code => $currency) {
+    $currencies_to_sync = $currencies;
+    unset($currencies_to_sync[$currency_code]);
+    $currency_sync_item = array(
+      'currency_code' => $currency_code,
+      'target_currencies' => array_combine(array_keys($currencies_to_sync), array_keys($currencies_to_sync)),
+    );
+
+    // Check if there are inividual settings per currency to currency rate.
+    if (!empty($conversion_settings[$currency_code]) && empty($conversion_settings[$currency_code]['sync']) ) {
+      foreach ($conversion_settings[$currency_code]['rates'] as $target_currency_code => $settings) {
+        // If this combination is excluded from autosync remove it.
+        if (empty($settings['sync'])) {
+          unset($currency_sync_item['target_currencies'][$target_currency_code]);
+        }
+      }
+    }
+    $queue->createItem($currency_sync_item);
+  }
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function commerce_currency_cron_queue_info() {
+  $queues['commerce_currency_sync_exchange_rates'] = array(
+    'worker callback' => 'commerce_currency_sync_exchange_rates',
+    'time' => 60,
+  );
+  return $queues;
+}
+
+/**
+ * Update the currency exchange rates.
+ *
+ * Use the configured sync provider to do so.
+ *
+ * @see commerce_currency_cron()
+ * @see commerce_currency_cron_queue_info()
+ */
+function commerce_currency_sync_exchange_rates($currency_sync_item) {
+  $sync_provider = commerce_currency_commerce_currency_exchange_rate_sync_provider(variable_get('commerce_currency_sync_provider', 'ecb'));
+  if (!empty($sync_provider['file'])) {
+    require_once $sync_provider['file'];
+  }
+  $rates = $sync_provider['callback']($currency_sync_item['currency_code'], $currency_sync_item['target_currencies']);
+  $conversion_settings = variable_get('commerce_currency_conversion_settings', array());
+  foreach ($rates as $target_currency_code => $rate) {
+    $conversion_settings[$currency_sync_item['currency_code']]['rates'][$target_currency_code]['rate'] = $rate;
+  }
+  variable_set('commerce_currency_conversion_settings', $conversion_settings);
 }

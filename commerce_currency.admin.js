@@ -7,7 +7,7 @@
       }
       var example = '--';
       if (Number(rate)) {
-        example = rate * 100;
+        example = rate * 1;
       }
       $(this).parent().find('.amount').html(example);
     });
