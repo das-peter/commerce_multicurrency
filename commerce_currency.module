@@ -188,7 +188,7 @@ function commerce_currency_sync_exchange_rates($currency_sync_item) {
 }
 
 /**
- * Function to trigger the currency exchange rate syncronization.
+ * Function to trigger the currency exchange rate synchronization.
  */
 function commerce_currency_sync_exchange_rates_now() {
   $queue = DrupalQueue::get('commerce_currency_sync_exchange_rates');
@@ -198,11 +198,11 @@ function commerce_currency_sync_exchange_rates_now() {
 
   // Build batch
   $batch = array(
-    'title' => t('Syncronize currencyexchange rates.'),
+    'title' => t('Synchronize currencyexchange rates.'),
     'operations' => array(),
-    'init_message' => t('Syncronisation is starting.'),
+    'init_message' => t('Synchronisation is starting.'),
     'progress_message' => t('Processed @current out of @total currencies.'),
-    'error_message' => t('Syncronisation has encountered an error.'),
+    'error_message' => t('Synchronisation has encountered an error.'),
     'file' => drupal_get_path('module', 'commerce_currency') . '/commerce_currency.module',
   );
 

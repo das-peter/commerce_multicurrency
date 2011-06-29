@@ -25,7 +25,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
   );
   $form['sync_now'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Syncronize rates on save.'),
+    '#title' => t('Synchronize rates on save.'),
   );
   $form['demo_amount'] = array(
     '#type' => 'textfield',
@@ -60,7 +60,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
     );
     $form['conversion_settings'][$currency['code']]['sync'] = array(
       '#type' => 'checkbox',
-      '#title' => t('Syncronize all rates of this currency.'),
+      '#title' => t('Synchronize all rates of this currency.'),
       '#states' => array(
         'checked' => array(
           '#edit-' . $currency['code'] . ' fieldset input[type="checkbox"]' => array('checked' => TRUE),
@@ -92,7 +92,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
       );
       $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']]['sync'] = array(
         '#type' => 'checkbox',
-        '#title' => t('Syncronize this conversion rate.'),
+        '#title' => t('Synchronize this conversion rate.'),
         '#default_value' => $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['sync'],
       );
       $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']]['rate'] = array(
