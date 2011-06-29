@@ -147,6 +147,7 @@ function commerce_currency_conversion_settings_form_rate_validate($element, &$fo
 }
 
 /**
+ * Submit handler for the settings form.
  * @param $form
  * @param $form_state
  */
@@ -154,29 +155,6 @@ function commerce_currency_conversion_settings_form_submit($form, &$form_state) 
   variable_set('commerce_currency_conversion_settings', $form_state['values']['conversion_settings']);
   variable_get('commerce_currency_sync_provider', $form_state['values']['sync_provider']);
   if (!empty($form_state['values']['sync_now'])) {
-    $queue = DrupalQueue::get('commerce_currency_sync_exchange_rates');
-    $queue->createQueue();
-
-    commerce_currency_cron();
-
-    // Build batch
-    $batch = array(
-      'title' => t('Syncronize currencyexchange rates.'),
-      'operations' => array(),
-      'init_message' => t('Syncronisation is starting.'),
-      'progress_message' => t('Processed @current out of @total currencies.'),
-      'error_message' => t('Syncronisation has encountered an error.'),
-      'file' => drupal_get_path('module', 'commerce_currency') . '/commerce_currency.module',
-    );
-
-    // Register queue items to process in batch
-    while (($item = $queue->claimItem())) {
-      $batch['operations'][] = array(
-        'commerce_currency_sync_exchange_rates',
-        array($item->data)
-      );
-    }
-    $queue->deleteQueue();
-    batch_set($batch);
+    commerce_currency_sync_exchange_rates_now();
   }
 }

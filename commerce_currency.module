@@ -9,13 +9,13 @@
  */
 function commerce_currency_menu() {
   $items = array();
-  $items['admin/commerce/config/currency_conversion'] = array(
+  $items['admin/commerce/config/currency/conversion'] = array(
     'title' => 'Currency conversion settings',
-    'description' => 'Set currency conversion rates.',
+    'description' => 'Configure currency conversion rates.',
     'page provider' => 'drupal_get_form',
     'page arguments' => array('commerce_currency_conversion_settings_form'),
     'access arguments' => array('configure store'),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
     'file' => 'commerce_currency.admin.inc',
   );
   return $items;
@@ -74,8 +74,8 @@ function commerce_currency_commerce_currency_exchange_rate_sync_provider_info() 
  * Inject own conversion function.
  */
 function commerce_currency_commerce_currency_info_alter(&$currencies, $langcode) {
-  foreach ($currencies as $currency_code) {
-    $currencies[$currency_code]['conversion_provider'] = 'commerce_currency_conversion';
+  foreach ($currencies as $currency_code => $currency_info) {
+    $currencies[$currency_code]['conversion_callback'] = 'commerce_currency_conversion';
   }
 }
 
@@ -102,7 +102,7 @@ function commerce_currency_conversion($amount, $currency_code, $target_currency_
       'commerce_currency', 'No conversion rates found - please configure them!',
       array(),
       WATCHDOG_ERROR,
-      url('admin/commerce/config/currency_conversion')
+      url('admin/commerce/config/currency/conversion')
     );
     return FALSE;
   }
@@ -113,7 +113,7 @@ function commerce_currency_conversion($amount, $currency_code, $target_currency_
       'commerce_currency', 'No conversion rate from %source_currency to  %target_currency found - please configure it!',
       array('%source_currency' => $currency_code, '%target_currency' => $target_currency_code),
       WATCHDOG_ERROR,
-      url('admin/commerce/config/currency_conversion')
+      url('admin/commerce/config/currency/conversion')
     );
     return FALSE;
   }
@@ -185,4 +185,34 @@ function commerce_currency_sync_exchange_rates($currency_sync_item) {
     $conversion_settings[$currency_sync_item['currency_code']]['rates'][$target_currency_code]['rate'] = $rate;
   }
   variable_set('commerce_currency_conversion_settings', $conversion_settings);
+}
+
+/**
+ * Function to trigger the currency exchange rate syncronization.
+ */
+function commerce_currency_sync_exchange_rates_now() {
+  $queue = DrupalQueue::get('commerce_currency_sync_exchange_rates');
+  $queue->createQueue();
+
+  commerce_currency_cron();
+
+  // Build batch
+  $batch = array(
+    'title' => t('Syncronize currencyexchange rates.'),
+    'operations' => array(),
+    'init_message' => t('Syncronisation is starting.'),
+    'progress_message' => t('Processed @current out of @total currencies.'),
+    'error_message' => t('Syncronisation has encountered an error.'),
+    'file' => drupal_get_path('module', 'commerce_currency') . '/commerce_currency.module',
+  );
+
+  // Register queue items to process in batch
+  while (($item = $queue->claimItem())) {
+    $batch['operations'][] = array(
+      'commerce_currency_sync_exchange_rates',
+      array($item->data)
+    );
+  }
+  $queue->deleteQueue();
+  batch_set($batch);
 }
