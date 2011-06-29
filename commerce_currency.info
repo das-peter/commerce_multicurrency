@@ -1,0 +1,7 @@
+name = "Commerce Currency"
+package = "Commerce"
+description = "Commerce currency support enhancements"
+
+core = "7.x"
+dependencies[]="commerce"
+dependencies[]="commerce_price"

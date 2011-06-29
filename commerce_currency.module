@@ -1,0 +1,55 @@
+<?php
+/**
+ * @file
+ *   Enhancements for the commerce currency support.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_currency_menu() {
+  $items = array();
+  $items['admin/commerce/config/currency_conversion'] = array(
+    'title' => 'Currency conversion settings',
+    'description' => 'Set currency conversion rates.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_currency_conversion_settings_form'),
+    'access arguments' => array('configure store'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'commerce_currency.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Converts a currency amount into another.
+ * @param string $currency
+ * @param integer $amount
+ * @param string $target_currency
+ *
+ * @return integer The converted amount or FALSE on failure.
+ */
+function commerce_currency_conversion($currency, $amount, $target_currency) {
+  if ($currency == $target_currency) {
+    return $amount;
+  }
+  if (!($conversion_settings = variable_get('commerce_currency_conversion_settings', FALSE))) {
+    watchdog(
+      'commerce_currency', 'No conversion rates found - please configure them!',
+      array(),
+      WATCHDOG_ERROR,
+      url('admin/commerce/config/currency_conversion')
+    );
+    return FALSE;
+  }
+  if ($conversion_settings[$currency]['rates'][$target_currency]) {
+    watchdog(
+    	'commerce_currency', 'No conversion rate from %source_currency to  %target_currency found - please configure it!',
+      array('%source_currency' => $currency, '%target_currency' => $target_currency),
+      WATCHDOG_ERROR,
+      url('admin/commerce/config/currency_conversion')
+    );
+    return FALSE;
+  }
+  return $amount * $conversion_settings[$currency]['rates'][$target_currency];
+}
