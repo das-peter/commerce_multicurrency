@@ -27,6 +27,12 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
     '#type' => 'checkbox',
     '#title' => t('Sync after save settings'),
   );
+  $form['demo_amount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Amount for example conversions'),
+  	'#size' => 5,
+    '#default_value' => 100,
+  );
 
   $form['conversion_settings'] = array(
     '#attached' => array(
@@ -106,11 +112,12 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
         '#element_validate' => array('commerce_currency_conversion_settings_form_rate_validate'),
         '#default_value' => $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate'],
         '#field_suffix' => t(
-          '* 1 @currency_symbol = !amount @conversion_currency_symbol',
+          '* !demo_amount @currency_symbol = !amount @conversion_currency_symbol',
           array(
+      			'!demo_amount' => '<span class="demo-amount">100</span>',
             '@currency_symbol' => $currency['symbol'],
             '@conversion_currency_symbol' => $conversion_currency['symbol'],
-            '!amount' => '<span class="amount">' . (1 * $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate']) . '</span>',
+            '!amount' => '<span class="demo-amount-converted">' . (100 * $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate']) . '</span>',
           )
         ),
       );
