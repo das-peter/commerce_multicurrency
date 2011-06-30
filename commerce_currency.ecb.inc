@@ -22,12 +22,19 @@ function commerce_currency_exchange_rate_sync_provider_ecb($currency_code, $targ
 
   if (!$data) {
     $ecb_rates = array();
-    if (($XML = @simplexml_load_file('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml')) && !empty($XML->Cube->Cube->Cube)) {
+    if (($XML = @simplexml_load_file('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml')) && @count($XML->Cube->Cube->Cube)) {
       foreach($XML->Cube->Cube->Cube as $rate){
         $ecb_rates[(string) $rate["currency"]] = (string) $rate["rate"];
       }
       // Cache six hours.
       cache_set(__FUNCTION__, $ecb_rates, 'cache', time() + (3600 * 6));
+    }
+    else {
+      watchdog(
+      	'commerce_currency', 'Rate provider ECB: Unable to fetch / process the currency data of @url',
+        array('@url' => 'http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'),
+        WATCHDOG_ERROR
+      );
     }
   }
   else {
