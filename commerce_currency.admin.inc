@@ -5,12 +5,14 @@
  */
 
 /**
+ * Form to configure conversion settings.
+ *
  * @param $form
  * @param $form_state
  */
 function commerce_currency_conversion_settings_form($form, &$form_state) {
   $enabled_currencies = commerce_currencies(TRUE);
-  $default_currency = commerce_currency_load();
+  $default_currency_code = commerce_default_currency();
   $conversion_settings = variable_get('commerce_currency_conversion_settings', array());
   $use_cross_sync = variable_get('commerce_currency_use_cross_conversion', TRUE);
 
@@ -57,7 +59,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
 
   if (count($enabled_currencies) > 1) {
     foreach ($enabled_currencies as $currency) {
-      if ($use_cross_sync && $currency != $default_currency) {
+      if ($use_cross_sync && $currency['code'] != $default_currency_code) {
         continue;
       }
       if (!isset($conversion_settings[$currency['code']])) {
@@ -74,7 +76,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
         '#collapsed' => TRUE,
         '#title' => $currency['name'],
       );
-      if ($currency == $default_currency) {
+      if ($currency['code'] == $default_currency_code) {
         $form['conversion_settings'][$currency['code']]['#weight'] = -1;
       }
       $form['conversion_settings'][$currency['code']]['sync'] = array(
@@ -192,4 +194,15 @@ function commerce_currency_conversion_settings_form_submit($form, &$form_state) 
     // Ensure the settings are in sync.
     commerce_currencies(FALSE, TRUE);
   }
+}
+
+
+/**
+ * Form to configure handling settings.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function commerce_currency_handling_settings_form($form, &$form_state) {
+
 }

@@ -10,14 +10,24 @@
 function commerce_currency_menu() {
   $items = array();
   $items['admin/commerce/config/currency/conversion'] = array(
-    'title' => 'Currency conversion settings',
-    'description' => 'Configure currency conversion rates.',
+    'title' => 'Currency conversion',
+    'description' => 'Configure currency conversion.',
     'page provider' => 'drupal_get_form',
     'page arguments' => array('commerce_currency_conversion_settings_form'),
     'access arguments' => array('configure store'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'commerce_currency.admin.inc',
     'weight' => 1,
+  );
+  $items['admin/commerce/config/currency/handling'] = array(
+    'title' => 'Currency handling',
+    'description' => 'Configure currency handling.',
+    'page provider' => 'drupal_get_form',
+    'page arguments' => array('commerce_currency_handling_settings_form'),
+    'access arguments' => array('configure store'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'commerce_currency.admin.inc',
+    'weight' => 2,
   );
   return $items;
 }
@@ -83,7 +93,7 @@ function commerce_currency_commerce_currency_exchange_rate_sync_provider_info() 
  * If cross conversion is disabled inject our own currency conversion callback.
  */
 function commerce_currency_commerce_currency_info_alter(&$currencies, $langcode) {
-  $default_currency = commerce_currency_load();
+  $default_currency_code = commerce_default_currency();
   $conversion_callback = NULL;
   $conversion_settings = FALSE;
   if (!variable_get('commerce_currency_use_cross_conversion', TRUE)) {
@@ -95,8 +105,8 @@ function commerce_currency_commerce_currency_info_alter(&$currencies, $langcode)
 
   foreach ($currencies as $currency_code => &$currency_info) {
     $currency_info['conversion_callback'] = $conversion_callback;
-    if ($conversion_settings && !empty($conversion_settings[$default_currency['code']]['rates'][$currency_code])) {
-      $currency_info['conversion_rate'] = $conversion_settings[$currency_code]['rates'][$default_currency['code']]['rate'];
+    if ($conversion_settings && !empty($conversion_settings[$default_currency_code]['rates'][$currency_code])) {
+      $currency_info['conversion_rate'] = 1 / $conversion_settings[$default_currency_code]['rates'][$currency_code]['rate'];
     }
   }
 }
