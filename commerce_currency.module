@@ -17,8 +17,17 @@ function commerce_currency_menu() {
     'access arguments' => array('configure store'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'commerce_currency.admin.inc',
+    'weight' => 1,
   );
   return $items;
+}
+
+/**
+ * Implements hook_menu_alter().
+ */
+function commerce_currency_menu_alter(&$items) {
+  $items['admin/commerce/config/currency/settings'] = $items['admin/commerce/config/currency'];
+  $items['admin/commerce/config/currency/settings']['type'] = MENU_DEFAULT_LOCAL_TASK;
 }
 
 /**
