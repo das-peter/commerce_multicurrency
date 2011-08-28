@@ -80,11 +80,24 @@ function commerce_currency_commerce_currency_exchange_rate_sync_provider_info() 
 /**
  * Implements hook_commerce_currency_info_alter().
  *
- * Inject own conversion function.
+ * If cross conversion is disabled inject our own currency conversion callback.
  */
 function commerce_currency_commerce_currency_info_alter(&$currencies, $langcode) {
-  foreach ($currencies as $currency_code => $currency_info) {
-    $currencies[$currency_code]['conversion_callback'] = 'commerce_currency_conversion';
+  $default_currency = commerce_currency_load();
+  $conversion_callback = NULL;
+  $conversion_settings = FALSE;
+  if (!variable_get('commerce_currency_use_cross_conversion', TRUE)) {
+    $conversion_callback = 'commerce_currency_conversion';
+  }
+  else {
+    $conversion_settings = variable_get('commerce_currency_conversion_settings', array());
+  }
+
+  foreach ($currencies as $currency_code => &$currency_info) {
+    $currency_info['conversion_callback'] = $conversion_callback;
+    if ($conversion_settings && !empty($conversion_settings[$default_currency['code']]['rates'][$currency_code])) {
+      $currency_info['conversion_rate'] = $conversion_settings[$currency_code]['rates'][$default_currency['code']]['rate'];
+    }
   }
 }
 
@@ -162,6 +175,7 @@ function commerce_currency_cron() {
     }
     $queue->createItem($currency_sync_item);
   }
+  $queue->createItem('finish');
 }
 
 /**
@@ -184,6 +198,12 @@ function commerce_currency_cron_queue_info() {
  * @see commerce_currency_cron_queue_info()
  */
 function commerce_currency_sync_exchange_rates($currency_sync_item) {
+  if ($currency_sync_item == 'finish') {
+    // Make sure the core commerce settings are in sync.
+    commerce_currencies(FALSE, TRUE);
+    return;
+  }
+
   $sync_provider = commerce_currency_commerce_currency_exchange_rate_sync_provider(variable_get('commerce_currency_sync_provider', 'ecb'));
   if (!empty($sync_provider['file'])) {
     require_once $sync_provider['file'];

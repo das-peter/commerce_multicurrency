@@ -10,8 +10,9 @@
  */
 function commerce_currency_conversion_settings_form($form, &$form_state) {
   $enabled_currencies = commerce_currencies(TRUE);
+  $default_currency = commerce_currency_load();
   $conversion_settings = variable_get('commerce_currency_conversion_settings', array());
-  $sync_provider = variable_get('commerce_currency_sync_provider', NULL);
+  $use_cross_sync = variable_get('commerce_currency_use_cross_conversion', TRUE);
 
   $sync_providers = array();
   foreach (commerce_currency_commerce_currency_exchange_rate_sync_provider() as $provider_code => $provider) {
@@ -20,8 +21,19 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
   $form['sync_provider'] = array(
     '#type' => 'select',
     '#options' => $sync_providers,
-    '#default_value' => $sync_provider,
+    '#default_value' => variable_get('commerce_currency_sync_provider', NULL),
     '#title' => t('Service to fetch exchange rates from:'),
+  );
+  $form['use_cross_sync'] = array(
+    '#type' => 'checkbox',
+    '#default_value' => $use_cross_sync,
+    '#title' => t('Use cross conversion between non default currencies.'),
+    '#description' => t(
+      'If enabled only the rates between the default currency and the other' .
+      ' currencies have to be managed. The rates between the' .
+      ' other currencies is derived from their rates relative to the' .
+      ' default currency.'
+    ),
   );
   $form['sync_now'] = array(
     '#type' => 'checkbox',
@@ -30,7 +42,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
   $form['demo_amount'] = array(
     '#type' => 'textfield',
     '#title' => t('Amount for example conversions:'),
-  	'#size' => 5,
+    '#size' => 5,
     '#default_value' => 100,
   );
 
@@ -43,85 +55,96 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
     '#tree' => TRUE,
   );
 
-  foreach ($enabled_currencies as $currency) {
-    if (!isset($conversion_settings[$currency['code']])) {
-      $conversion_settings[$currency['code']] = array();
-    }
-    $conversion_settings[$currency['code']] += array(
-      'sync' => '1',
-      'rates' => array(),
-    );
-
-    $form['conversion_settings'][$currency['code']] = array(
-      '#type' => 'fieldset',
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#title' => $currency['name'],
-    );
-    $form['conversion_settings'][$currency['code']]['sync'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Synchronize all rates of this currency.'),
-      '#states' => array(
-        'checked' => array(
-          '#edit-' . $currency['code'] . ' fieldset input[type="checkbox"]' => array('checked' => TRUE),
-        ),
-      ),
-      '#default_value' => $conversion_settings[$currency['code']]['sync'],
-    );
-
-    foreach ($enabled_currencies as $conversion_currency) {
-      if ($conversion_currency == $currency) {
+  if (count($enabled_currencies) > 1) {
+    foreach ($enabled_currencies as $currency) {
+      if ($use_cross_sync && $currency != $default_currency) {
         continue;
       }
-      if (!isset($conversion_settings[$currency['code']]['rates'][$conversion_currency['code']])) {
-        $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']] = array();
+      if (!isset($conversion_settings[$currency['code']])) {
+        $conversion_settings[$currency['code']] = array();
       }
-      $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']] += array(
+      $conversion_settings[$currency['code']] += array(
         'sync' => '1',
-        'rate' => 0,
+        'rates' => array(),
       );
 
-      $form['conversion_settings'][$currency['code']]['sync']['#states']['checked']['input[name="conversion_settings[' . $currency['code'] . '][rates][' . $conversion_currency['code'] . '][sync]"]'] = array('checked' => TRUE);
-
-      $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']] = array(
+      $form['conversion_settings'][$currency['code']] = array(
         '#type' => 'fieldset',
-        '#attributes' => array('class' => array('conversion-rates')),
         '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
-        '#title' => $conversion_currency['code'],
+        '#collapsed' => TRUE,
+        '#title' => $currency['name'],
       );
-      $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']]['sync'] = array(
+      if ($currency == $default_currency) {
+        $form['conversion_settings'][$currency['code']]['#weight'] = -1;
+      }
+      $form['conversion_settings'][$currency['code']]['sync'] = array(
         '#type' => 'checkbox',
-        '#title' => t('Synchronize this conversion rate.'),
-        '#default_value' => $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['sync'],
-      );
-      $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']]['rate'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Exchange rate'),
-        '#attributes' => array('class' => array('conversion-rate')),
-        '#description' => t(
-          'Exchange rate from @currency_code to @conversion_currency_code.',
-          array('@currency_code' => $currency['name'], '@conversion_currency_code' => $conversion_currency['name'])
-        ),
+        '#title' => t('Synchronize all rates of this currency.'),
         '#states' => array(
-          'disabled' => array(
-            'input[name="conversion_settings[' . $currency['code'] . '][rates][' . $conversion_currency['code'] . '][sync]"]' => array('checked' => TRUE),
+          'checked' => array(
+            '#edit-' . $currency['code'] . ' fieldset input[type="checkbox"]' => array('checked' => TRUE),
           ),
         ),
-        '#size' => 13,
-        '#element_validate' => array('commerce_currency_conversion_settings_form_rate_validate'),
-        '#default_value' => $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate'],
-        '#field_suffix' => t(
-          '* !demo_amount @currency_symbol = !amount @conversion_currency_symbol',
-          array(
-      			'!demo_amount' => '<span class="demo-amount">100</span>',
-            '@currency_symbol' => $currency['symbol'],
-            '@conversion_currency_symbol' => $conversion_currency['symbol'],
-            '!amount' => '<span class="demo-amount-converted">' . (100 * $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate']) . '</span>',
-          )
-        ),
+        '#default_value' => $conversion_settings[$currency['code']]['sync'],
       );
+
+      foreach ($enabled_currencies as $conversion_currency) {
+        if ($conversion_currency == $currency) {
+          continue;
+        }
+        if (!isset($conversion_settings[$currency['code']]['rates'][$conversion_currency['code']])) {
+          $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']] = array();
+        }
+        $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']] += array(
+          'sync' => '1',
+          'rate' => 0,
+        );
+
+        $form['conversion_settings'][$currency['code']]['sync']['#states']['checked']['input[name="conversion_settings[' . $currency['code'] . '][rates][' . $conversion_currency['code'] . '][sync]"]'] = array('checked' => TRUE);
+
+        $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']] = array(
+          '#type' => 'fieldset',
+          '#attributes' => array('class' => array('conversion-rates')),
+          '#collapsible' => TRUE,
+          '#collapsed' => FALSE,
+          '#title' => $conversion_currency['code'],
+        );
+        $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']]['sync'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('Synchronize this conversion rate.'),
+          '#default_value' => $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['sync'],
+        );
+        $form['conversion_settings'][$currency['code']]['rates'][$conversion_currency['code']]['rate'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Exchange rate'),
+          '#attributes' => array('class' => array('conversion-rate')),
+          '#description' => t(
+            'Exchange rate from @currency_code to @conversion_currency_code.',
+            array('@currency_code' => $currency['name'], '@conversion_currency_code' => $conversion_currency['name'])
+          ),
+          '#states' => array(
+            'disabled' => array(
+              'input[name="conversion_settings[' . $currency['code'] . '][rates][' . $conversion_currency['code'] . '][sync]"]' => array('checked' => TRUE),
+            ),
+          ),
+          '#size' => 13,
+          '#element_validate' => array('commerce_currency_conversion_settings_form_rate_validate'),
+          '#default_value' => $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate'],
+          '#field_suffix' => t(
+            '* !demo_amount @currency_symbol = !amount @conversion_currency_symbol',
+            array(
+              '!demo_amount' => '<span class="demo-amount">100</span>',
+              '@currency_symbol' => $currency['symbol'],
+              '@conversion_currency_symbol' => $conversion_currency['symbol'],
+              '!amount' => '<span class="demo-amount-converted">' . (100 * $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate']) . '</span>',
+            )
+          ),
+        );
+      }
     }
+  }
+  else {
+    drupal_set_message(t('Please enable the needed currencies to configure first.'), 'warning', FALSE);
   }
 
   $form['save'] = array(
@@ -161,7 +184,12 @@ function commerce_currency_conversion_settings_form_rate_validate($element, &$fo
 function commerce_currency_conversion_settings_form_submit($form, &$form_state) {
   variable_set('commerce_currency_conversion_settings', $form_state['values']['conversion_settings']);
   variable_get('commerce_currency_sync_provider', $form_state['values']['sync_provider']);
+  variable_set('commerce_currency_use_cross_conversion', $form_state['values']['use_cross_sync']);
   if (!empty($form_state['values']['sync_now'])) {
     commerce_currency_sync_exchange_rates_now();
+  }
+  else {
+    // Ensure the settings are in sync.
+    commerce_currencies(FALSE, TRUE);
   }
 }

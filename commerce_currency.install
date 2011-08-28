@@ -10,4 +10,5 @@
 function commerce_currency_uninstall() {
   variable_del('commerce_currency_conversion_settings');
   variable_del('commerce_currency_sync_provider');
+  variable_del('commerce_currency_use_cross_conversion');
 }
