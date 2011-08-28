@@ -179,7 +179,7 @@ function commerce_currency_conversion_settings_form_rate_validate($element, &$fo
 }
 
 /**
- * Submit handler for the settings form.
+ * Submit handler for the conversion settings form.
  * @param $form
  * @param $form_state
  */
@@ -204,5 +204,78 @@ function commerce_currency_conversion_settings_form_submit($form, &$form_state) 
  * @param $form_state
  */
 function commerce_currency_handling_settings_form($form, &$form_state) {
+  $enabled_currencies = commerce_currencies(TRUE);
 
+  $form['currency_fields'] = array(
+    '#tree' => TRUE,
+  );
+
+  foreach(commerce_product_types() as $commerce_product_type  => $type_info) {
+    $form['currency_fields'][$commerce_product_type] = array(
+      '#title' => t('Enable dedicated price fields for %type:', array('%type' => $type_info['name'])),
+      '#type' => 'fieldset',
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+      '#description' => t('For each enabled currency a dedicated price field in the commerce product type %type will be created.', array('%type' => $type_info['name']))
+    );
+
+    foreach ($enabled_currencies as $currency_code => $currency_info) {
+      $field_name = 'commerce_price_' . strtolower($currency_code);
+      $field_instance = field_info_instance('commerce_product', $field_name, $commerce_product_type);
+      $form['currency_fields'][$commerce_product_type][$currency_code] = array(
+        '#title' => t($currency_info['name']),
+        '#type' => 'checkbox',
+        '#default_value' => (int) !empty($field_instance),
+      );
+    }
+  }
+
+  $form['save'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save Settings'),
+  );
+
+  drupal_set_message(t('Attention: Changing this configuration can lead to data loss.'), 'warning', FALSE);
+
+  return $form;
+}
+
+/**
+ * Submit handler for the handling settings form.
+ * @param $form
+ * @param $form_state
+ */
+function commerce_currency_handling_settings_form_submit($form, &$form_state) {
+  foreach ($form_state['values']['currency_fields'] as $commerce_product_type => $currency_fields) {
+    foreach ($currency_fields as $currency_code => $has_field) {
+      $field_name = 'commerce_price_' . strtolower($currency_code);
+      $field_instance = field_info_instance('commerce_product', $field_name, $commerce_product_type);
+      switch (TRUE) {
+        // Field enabled but none created yet.
+        case $has_field && !$field_instance:
+          // Reuse commerce code to create the initial field instance.
+          commerce_price_create_instance($field_name, 'commerce_product', $commerce_product_type, 'Price in ' . $currency_code);
+          // Fetch the new instance and modify it.
+          $new_field_instance = field_info_instance('commerce_product', $field_name, $commerce_product_type);
+          $new_field_instance['widget']['settings']['currency_code'] = $currency_code;
+          $new_field_instance['widget']['type'] = 'commerce_price_simple';
+          field_update_instance($new_field_instance);
+          drupal_set_message(t('Field %fieldname on %type created.', array('%fieldname' => $field_name, '%type' => $commerce_product_type)), 'status', FALSE);
+          break;
+        // Field enabled and already created.
+        case $has_field && !$field_instance:
+          // done
+          break;
+        // Field disabled but still there.
+        case !$has_field && $field_instance:
+          field_delete_instance($field_instance);
+          drupal_set_message(t('Field %fieldname on %type deleted.', array('%fieldname' => $field_name, '%type' => $commerce_product_type)), 'status', FALSE);
+          break;
+        // Field disabled and already removed.
+        case !$has_field && $field_instance:
+          // done
+          break;
+      }
+    }
+  }
 }

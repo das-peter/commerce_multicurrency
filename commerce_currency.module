@@ -255,3 +255,29 @@ function commerce_currency_sync_exchange_rates_now() {
   $queue->deleteQueue();
   batch_set($batch);
 }
+
+/**
+ * Implements hook_help().
+ */
+function commerce_currency_help($path, $arg) {
+  switch ($path) {
+    // Main module help for the block module
+    case 'admin/commerce/config/currency/handling':
+      return
+        '<p>' .
+        t('There are two fundamental different ways of how to handle multiple currencies:') .
+        '<ul>' .
+          '<li>' . t('Use a conversion to get the appropriate amount for a currency.') . '</li>' .
+          '<li>' . t('Use a dedicated price field for each currency.') . '</li>' .
+        '</ul>' .
+        t(
+          'While the <a href="!conversion_settings_page_url">conversion settings page</a> of this modules help you to manage ' .
+          'your conversion this settings are dedicated to the second approach. ' .
+          'If you enable the dedicated currency price fields you\'ll also get ' .
+          'a new rule to set the appropriate currency price on the rules ' .
+          'event "Calculating the sell price of a product"'
+        , array('!conversion_settings_page_url' => url('admin/commerce/config/currency/conversion'))
+        ) .
+        '</p>';
+  }
+}
