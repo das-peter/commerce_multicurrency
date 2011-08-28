@@ -1,7 +1,7 @@
 
 -- SUMMARY --
 
-This module enhances the multi currency capabilities of commerce
+This module enhances some of the multi-currency capabilities of commerce
 http://drupal.org/project/commerce
 
 
@@ -22,7 +22,7 @@ Commerce: http://drupal.org/project/commerce
 
 -- API --
 It is possible to add own functions / services to sync the conversion rates.
-Check commerce_currency.api.php and commerce_currency.ecb.inc for further 
+Check commerce_currency.api.php and commerce_currency.ecb.inc for further
 information and examples.
 
-Currently the sync is triggered manually or by cron.
+The sync is triggered manually or by cron.
