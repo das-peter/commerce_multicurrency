@@ -281,3 +281,88 @@ function commerce_currency_help($path, $arg) {
         '</p>';
   }
 }
+
+/**
+ * Implements hook_block_info().
+ */
+function commerce_currency_block_info() {
+  $blocks = array();
+  $blocks['currency_selector'] = array(
+    'info' => t('Currency Selector'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function commerce_currency_block_view($delta) {
+  $block = array();
+  if ($delta == 'currency_selector') {
+    $block['subject'] = t('Select currency');
+    $block['content'] = drupal_get_form('commerce_currency_selector_form');
+  }
+  return $block;
+}
+
+/**
+ * Form for the currency selector block.
+ * @param array $form
+ * @param array $form_state
+ */
+function commerce_currency_selector_form($form, &$form_state) {
+  $form['selected_currency'] = array(
+    '#type' => 'select',
+    '#options' => commerce_currency_code_options_list(),
+    '#default_value' => commerce_currency_get_user_currency_code(),
+  );
+  $form['save_selected_currency'] = array(
+    '#value' => t('Save'),
+    '#type' => 'submit',
+  );
+  return $form;
+}
+
+/**
+ * Submit handler for the currency selector block form.
+ * @param array $form
+ * @param array $form_state
+ */
+function commerce_currency_selector_form_submit($form, &$form_state) {
+  user_cookie_save(array('commerce_currency' => $form_state['values']['selected_currency']));
+}
+
+/**
+ * Returns the currency code to use for the current user.
+ * @return string
+ */
+function commerce_currency_get_user_currency_code() {
+  $currency_code = &drupal_static(__FUNCTION__, FALSE);
+  if ($currency_code) {
+    return $currency_code;
+  }
+
+  // If there's a cookie with a selected currency ensure it's a available one.
+  if (isset($_COOKIE['Drupal_visitor_commerce_currency'])) {
+    $enabled_currencies = commerce_currencies(TRUE);
+    $currency_code = $_COOKIE['Drupal_visitor_commerce_currency'];
+    if (!empty($enabled_currencies[$currency_code])) {
+      return $currency_code;
+    }
+  }
+
+  return $currency_code = commerce_default_currency();
+}
+
+/**
+ * Entity metadata callback: returns the current user's currency.
+ *
+ * @see commerce_currency_entity_property_info_alter()
+ */
+function commerce_currency_get_properties($data = FALSE, array $options, $name) {
+  switch ($name) {
+    case 'commerce_currency':
+      return commerce_currency_get_user_currency_code();
+  }
+}
