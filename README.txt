@@ -22,7 +22,8 @@ Commerce: http://drupal.org/project/commerce
 
 * Install as usual, see http://drupal.org/node/70151 for further information.
 
-* Configure the currency conversion: admin/commerce/config/currency/conversion
+* Configure the currency conversion: admin/commerce/config/currency/conversion and/or
+  the currency handling: admin/commerce/config/currency/handling
 
 * Run cron or sync manually to synchronize the rates.
 
