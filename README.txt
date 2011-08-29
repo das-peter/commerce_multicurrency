@@ -4,6 +4,14 @@
 This module enhances some of the multi-currency capabilities of commerce
 http://drupal.org/project/commerce
 
+It provides these features:
+ - UI for fine granular definition of exchange rates.
+   (Every currency combination can be defined separately if needed)
+ - Syncronization of currency exchange rates directly from the European Central Bank (ECB).
+ - UI to specify which rates shall be syncornized and which are handled manually.
+ - Generation of currency specific price fields inclusive generation of rule-set to handle them.
+ - hooks for easy integration of custom currency exchange rate sources.
+
 
 -- REQUIREMENTS --
 
@@ -17,7 +25,6 @@ Commerce: http://drupal.org/project/commerce
 * Configure the currency conversion: admin/commerce/config/currency/conversion
 
 * Run cron or sync manually to synchronize the rates.
-
 
 
 -- API --
