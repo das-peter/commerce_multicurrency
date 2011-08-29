@@ -1,6 +1,6 @@
-name = "Commerce Currency"
+name = "Commerce Multicurrency"
 package = "Commerce"
-description = "Commerce currency support enhancements"
+description = "Commerce multicurrency support enhancements"
 
 core = "7.x"
 dependencies[]="commerce"
