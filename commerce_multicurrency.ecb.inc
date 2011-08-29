@@ -17,7 +17,7 @@
  *
  * @return array
  */
-function commerce_currency_exchange_rate_sync_provider_ecb($currency_code, $target_currencies) {
+function commerce_multicurrency_exchange_rate_sync_provider_ecb($currency_code, $target_currencies) {
   $data = cache_get(__FUNCTION__, 'cache');
 
   if (!$data) {
@@ -31,7 +31,7 @@ function commerce_currency_exchange_rate_sync_provider_ecb($currency_code, $targ
     }
     else {
       watchdog(
-      	'commerce_currency', 'Rate provider ECB: Unable to fetch / process the currency data of @url',
+        'commerce_multicurrency', 'Rate provider ECB: Unable to fetch / process the currency data of @url',
         array('@url' => 'http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'),
         WATCHDOG_ERROR
       );

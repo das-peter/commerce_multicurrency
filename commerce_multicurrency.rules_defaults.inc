@@ -8,7 +8,7 @@
 /**
  * Implements hook_default_rules_configuration().
  */
-function commerce_currency_default_rules_configuration() {
+function commerce_multicurrency_default_rules_configuration() {
   $rules = array();
 
   $reaction_rule = rules_reaction_rule();
@@ -18,7 +18,7 @@ function commerce_currency_default_rules_configuration() {
 
   foreach (commerce_currencies(TRUE) as $currency_code => $currency_info) {
     $field_name = 'commerce_price_' . strtolower($currency_code);
-    $rule_name = 'commerce_currency_use_' . strtolower($currency_code);
+    $rule_name = 'commerce_multicurrency_use_' . strtolower($currency_code);
     $field_info = field_info_field($field_name);
     if (!$field_info){
       $saved_rule = rules_config_load($rule_name);
@@ -66,7 +66,7 @@ function commerce_currency_default_rules_configuration() {
 
   $reaction_rule
     ->event('commerce_product_calculate_sell_price');
-  $rules['commerce_currency_set_currency_price'] = $reaction_rule;
+  $rules['commerce_multicurrency_set_currency_price'] = $reaction_rule;
 
   return $rules;
 }

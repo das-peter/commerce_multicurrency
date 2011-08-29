@@ -22,7 +22,7 @@ Commerce: http://drupal.org/project/commerce
 
 -- API --
 It is possible to add own functions / services to sync the conversion rates.
-Check commerce_currency.api.php and commerce_currency.ecb.inc for further
+Check commerce_multicurrency.api.php and commerce_multicurrency.ecb.inc for further
 information and examples.
 
 The sync is triggered manually or by cron.

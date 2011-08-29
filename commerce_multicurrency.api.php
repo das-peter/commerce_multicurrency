@@ -23,15 +23,13 @@
  *      As return an assiocative array keyed by the currency code with the rate
  *      as value is expected.
  *   - file: Optional. A file to include.
- *
- * @see hook_commerce_currency_info_alter()
  */
-function hook_commerce_currency_exchange_rate_sync_provider_info() {
+function hook_commerce_multicurrency_exchange_rate_sync_provider_info() {
   return array (
     'ecb' => array(
       'title' => t('European Central Bank'),
-      'callback' => 'commerce_currency_exchange_rate_sync_provider_ecb',
-      'file' => drupal_get_path('module', 'commerce_currency') . '/commerce_currency.ecb.inc',
+      'callback' => 'commerce_multicurrency_exchange_rate_sync_provider_ecb',
+      'file' => drupal_get_path('module', 'commerce_multicurrency') . '/commerce_multicurrency.ecb.inc',
     ),
   );
 }
@@ -42,8 +40,8 @@ function hook_commerce_currency_exchange_rate_sync_provider_info() {
  * This hook allows you to change the formatting properties of existing
  * definitions.
  *
- * @see hook_commerce_currency_info()
+ * @see hook_commerce_multicurrency_exchange_rate_sync_provider_info()
  */
-function hook_commerce_currency_exchange_rate_sync_provider_info_alter(&$providers) {
-  $currencies['ecb']['callback'] = 'commerce_currency_exchange_rate_sync_provider_ecb_different';
+function hook_commerce_multicurrency_exchange_rate_sync_provider_info_alter(&$providers) {
+  $currencies['ecb']['callback'] = 'commerce_multicurrency_exchange_rate_sync_provider_ecb_different';
 }

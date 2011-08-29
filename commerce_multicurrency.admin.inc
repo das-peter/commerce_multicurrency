@@ -10,20 +10,20 @@
  * @param $form
  * @param $form_state
  */
-function commerce_currency_conversion_settings_form($form, &$form_state) {
+function commerce_multicurrency_conversion_settings_form($form, &$form_state) {
   $enabled_currencies = commerce_currencies(TRUE);
   $default_currency_code = commerce_default_currency();
-  $conversion_settings = variable_get('commerce_currency_conversion_settings', array());
-  $use_cross_sync = variable_get('commerce_currency_use_cross_conversion', TRUE);
+  $conversion_settings = variable_get('commerce_multicurrency_conversion_settings', array());
+  $use_cross_sync = variable_get('commerce_multicurrency_use_cross_conversion', TRUE);
 
   $sync_providers = array();
-  foreach (commerce_currency_commerce_currency_exchange_rate_sync_provider() as $provider_code => $provider) {
+  foreach (commerce_multicurrency_commerce_multicurrency_exchange_rate_sync_provider() as $provider_code => $provider) {
     $sync_providers[$provider_code] = $provider['title'];
   }
   $form['sync_provider'] = array(
     '#type' => 'select',
     '#options' => $sync_providers,
-    '#default_value' => variable_get('commerce_currency_sync_provider', NULL),
+    '#default_value' => variable_get('commerce_multicurrency_sync_provider', NULL),
     '#title' => t('Service to fetch exchange rates from:'),
   );
   $form['use_cross_sync'] = array(
@@ -51,7 +51,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
   $form['conversion_settings'] = array(
     '#attached' => array(
       'js' => array(
-        drupal_get_path('module', 'commerce_currency') . '/commerce_currency.admin.js',
+        drupal_get_path('module', 'commerce_multicurrency') . '/commerce_multicurrency.admin.js',
       ),
     ),
     '#tree' => TRUE,
@@ -130,7 +130,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
             ),
           ),
           '#size' => 13,
-          '#element_validate' => array('commerce_currency_conversion_settings_form_rate_validate'),
+          '#element_validate' => array('commerce_multicurrency_conversion_settings_form_rate_validate'),
           '#default_value' => $conversion_settings[$currency['code']]['rates'][$conversion_currency['code']]['rate'],
           '#field_suffix' => t(
             '* !demo_amount @currency_symbol = !amount @conversion_currency_symbol',
@@ -166,7 +166,7 @@ function commerce_currency_conversion_settings_form($form, &$form_state) {
  * @param $form
  * @param $form_state
  */
-function commerce_currency_conversion_settings_form_rate_validate($element, &$form_state) {
+function commerce_multicurrency_conversion_settings_form_rate_validate($element, &$form_state) {
   $value = trim($element['#value']);
   // Reject invalid characters.
   if (!empty($value)) {
@@ -183,12 +183,12 @@ function commerce_currency_conversion_settings_form_rate_validate($element, &$fo
  * @param $form
  * @param $form_state
  */
-function commerce_currency_conversion_settings_form_submit($form, &$form_state) {
-  variable_set('commerce_currency_conversion_settings', $form_state['values']['conversion_settings']);
-  variable_get('commerce_currency_sync_provider', $form_state['values']['sync_provider']);
-  variable_set('commerce_currency_use_cross_conversion', $form_state['values']['use_cross_sync']);
+function commerce_multicurrency_conversion_settings_form_submit($form, &$form_state) {
+  variable_set('commerce_multicurrency_conversion_settings', $form_state['values']['conversion_settings']);
+  variable_get('commerce_multicurrency_sync_provider', $form_state['values']['sync_provider']);
+  variable_set('commerce_multicurrency_use_cross_conversion', $form_state['values']['use_cross_sync']);
   if (!empty($form_state['values']['sync_now'])) {
-    commerce_currency_sync_exchange_rates_now();
+    commerce_multicurrency_sync_exchange_rates_now();
   }
   else {
     // Ensure the settings are in sync.
@@ -203,7 +203,7 @@ function commerce_currency_conversion_settings_form_submit($form, &$form_state) 
  * @param $form
  * @param $form_state
  */
-function commerce_currency_handling_settings_form($form, &$form_state) {
+function commerce_multicurrency_handling_settings_form($form, &$form_state) {
   $enabled_currencies = commerce_currencies(TRUE);
 
   $form['currency_fields'] = array(
@@ -245,7 +245,7 @@ function commerce_currency_handling_settings_form($form, &$form_state) {
  * @param $form
  * @param $form_state
  */
-function commerce_currency_handling_settings_form_submit($form, &$form_state) {
+function commerce_multicurrency_handling_settings_form_submit($form, &$form_state) {
   foreach ($form_state['values']['currency_fields'] as $commerce_product_type => $currency_fields) {
     foreach ($currency_fields as $currency_code => $has_field) {
       $field_name = 'commerce_price_' . strtolower($currency_code);
